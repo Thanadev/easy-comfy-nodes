@@ -9,8 +9,6 @@ import rembg
 import comfy
 import pillow_avif
 
-from pillow_heif import register_heif_opener
-register_heif_opener()
 
 class HttpPostNode:
     @classmethod
@@ -196,41 +194,6 @@ class S3Upload:
         print(f'Uploading file to {s3url}')
         return (s3url,)
 
-class RemoveImageBackground:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "image": ("IMAGE",),
-            }
-        }
-
-    RETURN_TYPES = ("IMAGE", "IMAGE")
-    RETURN_NAMES = ("image", "imageWithAlpha")
-    OUTPUT_NODE = True
-    CATEGORY = "image"
-    FUNCTION = "execute"
-
-    def execute(self, image):
-        # tensor -> numpy
-        image = image.cpu().numpy() * 255.0
-        image = np.clip(image, 0, 255).astype(np.uint8)
-
-        # numpy -> pillow
-        frame = Image.fromarray(image[0])
-        output = rembg.remove(frame)
-
-        output = ImageOps.exif_transpose(output)
-        outputNoAlpha = output.convert("RGB")
-
-        # pillow -> numpy -> tensor
-        image = np.array(outputNoAlpha).astype(np.float32) / 255.0
-        image = torch.from_numpy(image)[None,]
-
-        imageWithAlpha = np.array(output).astype(np.float32) / 255.0
-        imageWithAlpha = torch.from_numpy(imageWithAlpha)[None,]
-
-        return (image,imageWithAlpha)
 
 NODE_CLASS_MAPPINGS = {
     "EZHttpPostNode": HttpPostNode,
